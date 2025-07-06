@@ -1,0 +1,37 @@
+﻿@page "/offlinememo"
+@inject IJSRuntime JSRuntime
+
+<h3>오프라인 메모</h3>
+<p>이 메모는 인터넷 연결 없이도 저장되고, 앱을 껐다 켜도 남아있습니다.</p>
+
+<div class="mb-3">
+    <textarea @bind="currentMemo" class="form-control" rows="8" placeholder="여기에 메모를 입력하세요..."></textarea>
+</div>
+<button @onclick="SaveMemo" class="btn btn-primary">메모 저장</button>
+
+<h4 class="mt-4">저장된 메모:</h4>
+<pre class="p-3 bg-light border rounded">@savedMemo</pre>
+
+@code {
+    private string? currentMemo;
+    private string? savedMemo;
+
+    // 페이지가 처음 렌더링될 때 저장된 메모를 불러옵니다.
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMemo();
+    }
+
+    private async Task SaveMemo()
+    {
+        // JavaScript를 호출하여 Local Storage에 데이터를 저장합니다.
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "offlineMemo", currentMemo);
+        await LoadMemo(); // 저장 후 바로 불러와서 화면에 표시
+    }
+
+    private async Task LoadMemo()
+    {
+        // JavaScript를 호출하여 Local Storage에서 데이터를 불러옵니다.
+        savedMemo = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "offlineMemo");
+    }
+}
