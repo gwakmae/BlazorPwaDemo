@@ -1,0 +1,58 @@
+# GitHub Actions 워크플로우 이름
+name: Deploy to GitHub Pages
+
+# 언제 이 워크플로우를 실행할 것인지 정의
+on:
+  # 'main' 브랜치에 push 이벤트가 발생했을 때 실행
+  push:
+    branches: [ main ]
+  # Actions 탭에서 수동으로 실행할 수 있도록 설정
+  workflow_dispatch:
+
+# GitHub Pages 배포에 필요한 권한 설정
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 실행할 작업(Job) 정의
+jobs:
+  # 배포 작업
+  deploy:
+    runs-on: ubuntu-latest # 작업이 실행될 가상 환경
+    steps:
+      # 1. 리포지토리의 코드를 가상 환경으로 가져옴
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. .NET 8 SDK 환경 설정
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      # 3. Blazor 앱 게시(Publish)
+      - name: Publish .NET Project
+        run: dotnet publish BlazorPwaDemo/BlazorPwaDemo.csproj -c Release -o release --nologo
+        # ❗❗ 'BlazorPwaDemo/BlazorPwaDemo.csproj' 경로가 정확한지 확인하세요.
+
+      # 4. <base href> 수정 (가장 중요한 부분!)
+      #    GitHub Pages는 서브디렉토리에 배포되므로, 앱의 기준 경로를 수정해야 함
+      - name: Change base-tag in index.html
+        run: sed -i 's/<base href="\/" \/>/<base href="\/BlazorPwaDemo\/" \/>/g' release/wwwroot/index.html
+        # ❗❗ 위 라인의 BlazorPwaDemo 부분을 본인의 '리포지토리 이름'으로 정확하게 바꿔주세요 ❗❗
+
+      # 5. Jekyll이 Blazor 라우팅을 방해하지 않도록 .nojekyll 파일 생성
+      - name: Add .nojekyll file
+        run: touch release/wwwroot/.nojekyll
+
+      # 6. 게시된 결과물을 아티팩트(Artifact)로 업로드
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+      # 7. 아티팩트를 GitHub Pages에 배포
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
